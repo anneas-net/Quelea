@@ -921,7 +921,7 @@ public final class QueleaProperties extends SortedProperties {
      * @return the true to show extra toolbar options.
      */
     public boolean getShowExtraLivePanelToolbarOptions() {
-        return Boolean.parseBoolean(getProperty(showExtraLivePanelToolbarOptionsKey, "false"));
+        return Boolean.parseBoolean(getProperty(showExtraLivePanelToolbarOptionsKey, "true"));
     }
 
     /**
