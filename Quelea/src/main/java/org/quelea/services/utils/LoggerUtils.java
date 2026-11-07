@@ -56,7 +56,15 @@ public final class LoggerUtils {
             synchronized (LoggerUtils.class) {
                 if (handlerFile == null && QueleaProperties.get() != null) {
                     handlerFile = Utils.getDebugLog();
-                    handlerFile.delete();
+                    // Keep the log from the previous run instead of deleting it:
+                    // after a crash / force-close it's the only record of what
+                    // went wrong, and it used to be wiped as soon as Quelea was
+                    // reopened.
+                    File previous = new File(handlerFile.getParentFile(), "quelea-debuglog-previous.txt");
+                    previous.delete();
+                    if (!handlerFile.renameTo(previous)) {
+                        handlerFile.delete();
+                    }
                 }
             }
         }

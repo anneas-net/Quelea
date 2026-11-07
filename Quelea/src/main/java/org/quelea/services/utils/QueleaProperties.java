@@ -135,6 +135,7 @@ import static org.quelea.services.utils.QueleaPropertyKeys.smallSongTextVPositio
 import static org.quelea.services.utils.QueleaPropertyKeys.songOverflowKey;
 import static org.quelea.services.utils.QueleaPropertyKeys.splitBibleVersesKey;
 import static org.quelea.services.utils.QueleaPropertyKeys.stageBackgroundColorKey;
+import static org.quelea.services.utils.QueleaPropertyKeys.projectorBackgroundColorKey;
 import static org.quelea.services.utils.QueleaPropertyKeys.stageChordColorKey;
 import static org.quelea.services.utils.QueleaPropertyKeys.stageCoordsKey;
 import static org.quelea.services.utils.QueleaPropertyKeys.stageFontKey;
@@ -1774,6 +1775,28 @@ public final class QueleaProperties extends SortedProperties {
      */
     public Color getStageBackgroundColor() {
         return getColor(getProperty(stageBackgroundColorKey, "0,0,0"));
+    }
+
+    /**
+     * Get the colour shown behind content on the projector screen, for example
+     * the bars either side of an image whose proportions don't match the
+     * screen.
+     * <p>
+     *
+     * @return the projector background colour (black by default).
+     */
+    public Color getProjectorBackgroundColor() {
+        return getColor(getProperty(projectorBackgroundColorKey, "0,0,0"));
+    }
+
+    /**
+     * Set the colour shown behind content on the projector screen.
+     * <p>
+     *
+     * @param color the projector background colour.
+     */
+    public void setProjectorBackgroundColor(Color color) {
+        setProperty(projectorBackgroundColorKey, getStr(color));
     }
 
     /**

@@ -18,15 +18,20 @@ package org.quelea.windows.options;
 
 import com.dlsc.formsfx.model.structure.Field;
 import com.dlsc.preferencesfx.model.Category;
+import com.dlsc.preferencesfx.model.Group;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import org.quelea.services.languages.LabelGrabber;
+import org.quelea.services.utils.QueleaProperties;
 import org.quelea.windows.main.GraphicsDeviceWatcher;
 import org.quelea.windows.main.QueleaApp;
 
 import java.util.HashMap;
 import org.quelea.windows.style.QueleaIcon;
+
+import static org.quelea.services.utils.QueleaPropertyKeys.projectorBackgroundColorKey;
+import static org.quelea.windows.options.PreferencesDialog.getColorPicker;
 
 /**
  * A panel that the user uses to set up the displays that match to the outputs.
@@ -60,7 +65,11 @@ public class OptionsDisplaySetupPanel {
         return Category.of(LabelGrabber.INSTANCE.getLabel("display.options.heading"), QueleaIcon.MONITOR.create(),
                 controlScreen.getGroup(),
                 projectorScreen.getGroup(),
-                stageScreen.getGroup()
+                stageScreen.getGroup(),
+                Group.of(LabelGrabber.INSTANCE.getLabel("projector.background.heading"),
+                        getColorPicker(LabelGrabber.INSTANCE.getLabel("projector.background.colour"),
+                                QueleaProperties.get().getProjectorBackgroundColor())
+                                .customKey(projectorBackgroundColorKey))
         );
     }
 

@@ -48,7 +48,27 @@ public class PdfSlide {
      * @param pdfRenderer the renderer of the file
      */
     public PdfSlide(int numSlide, PDFRenderer pdfRenderer) throws IOException {
-        originalImage = resizeImage(pdfRenderer.renderImageWithDPI(numSlide - 1, 200, ImageType.RGB), BIG_SIZE, BIG_SIZE);
+        this(numSlide, pdfRenderer, 0);
+    }
+
+    /**
+     * Create a new PDF slide.
+     *
+     * @param numSlide slide number
+     * @param pdfRenderer the renderer of the file
+     * @param longestSidePts the longest side of the page in PDF points (1/72
+     * inch), or 0 if unknown.
+     */
+    public PdfSlide(int numSlide, PDFRenderer pdfRenderer, float longestSidePts) throws IOException {
+        // Render at 200 DPI, but never much bigger than the size we keep
+        // (BIG_SIZE). Rendering at a fixed DPI made large-format or scanned
+        // pages produce enormous images (100MB+ each) that were immediately
+        // shrunk again, which could run Quelea out of memory.
+        float scale = 200f / 72f;
+        if (longestSidePts > 0) {
+            scale = Math.min(scale, BIG_SIZE / longestSidePts);
+        }
+        originalImage = resizeImage(pdfRenderer.renderImage(numSlide - 1, scale, ImageType.RGB), BIG_SIZE, BIG_SIZE);
         outputfile = File.createTempFile("slide" + numSlide, ".png");
         outputfile.deleteOnExit();
         ImageIO.write(originalImage, "png", outputfile);

@@ -19,10 +19,9 @@ package org.quelea.data.pdf;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
 /**
@@ -74,16 +73,18 @@ public class PDFPresentation implements Pdf {
      */
     private PdfSlide[] makeSlides() throws IOException {
         File pdf = new File(file);
-        PDDocument document = PDDocument.load(pdf.getAbsoluteFile());
-        Path f = Files.createTempDirectory(null);
-        f.toFile().deleteOnExit();
         ArrayList<PdfSlide> ret = new ArrayList<>();
-        PDFRenderer pdfRenderer = new PDFRenderer(document);
-        int totalPages = document.getNumberOfPages();
-        for (int i = 0; i < totalPages; i++) {
-            ret.add(new PdfSlide(i + 1, pdfRenderer));
+        // try-with-resources so the PDF is always closed (and not left locked
+        // on Windows) even if rendering a page fails.
+        try (PDDocument document = PDDocument.load(pdf.getAbsoluteFile())) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            int totalPages = document.getNumberOfPages();
+            for (int i = 0; i < totalPages; i++) {
+                PDRectangle box = document.getPage(i).getCropBox();
+                float longestSide = Math.max(box.getWidth(), box.getHeight());
+                ret.add(new PdfSlide(i + 1, pdfRenderer, longestSide));
+            }
         }
-        document.close();
         return ret.toArray(new PdfSlide[ret.size()]);
     }
 }

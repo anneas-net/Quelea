@@ -27,6 +27,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.scene.Cursor;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.application.Platform;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import org.quelea.services.utils.LoggerUtils;
@@ -84,7 +85,15 @@ public class WebDisplayable implements Displayable {
      * @return the object as defined by the XML.
      */
     public static WebDisplayable parseXML(Node node) {
-        return new WebDisplayable(node.getTextContent());
+        // A WebView can only be created on the FX thread, but schedules are
+        // now loaded on a background thread.
+        final String url = node.getTextContent();
+        if (Platform.isFxApplicationThread()) {
+            return new WebDisplayable(url);
+        }
+        final WebDisplayable[] ret = new WebDisplayable[1];
+        Utils.fxRunAndWait(() -> ret[0] = new WebDisplayable(url));
+        return ret[0];
     }
 
     /**

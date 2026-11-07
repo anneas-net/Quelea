@@ -51,7 +51,6 @@ import org.quelea.windows.presentation.PowerPointHandler;
 public class ExitActionHandler implements EventHandler<ActionEvent> {
 
     private static final Logger LOGGER = LoggerUtils.getLogger();
-    private boolean cancel = false;
 
     /**
      * Call this method when the event is fired.
@@ -61,7 +60,8 @@ public class ExitActionHandler implements EventHandler<ActionEvent> {
         exit(t);
     }
 
-    private boolean block = false;
+    private volatile boolean block = false;
+    private boolean exitWithoutSaving;
 
     /**
      * Process the necessary logic to cleanly exit from Quelea.
@@ -75,29 +75,50 @@ public class ExitActionHandler implements EventHandler<ActionEvent> {
         t.consume();
         Schedule schedule = mainWindow.getMainPanel().getSchedulePanel().getScheduleList().getSchedule();
         if (!schedule.isEmpty() && schedule.isModified()) {
-            cancel = true;
+            exitWithoutSaving = false;
             Dialog d = Dialog.buildConfirmation(LabelGrabber.INSTANCE.getLabel("save.before.exit.title"), LabelGrabber.INSTANCE.getLabel("save.before.exit.text")).addYesButton(t14 -> {
-                //Save schedule
-                block = true;
+                // Save the schedule, and only exit once the save has finished
+                // successfully. Previously the UI thread spun in a sleep loop
+                // waiting for the save; if saving threw an exception the flag
+                // was never reset and Quelea hung forever on exit.
                 new ScheduleSaver().saveSchedule(false, success -> {
-                    cancel = !success;
-                    block = false;
+                    if (success) {
+                        Platform.runLater(() -> doExit(mainWindow));
+                    }
                 });
-            }).addNoButton(t13 -> cancel = false).addCancelButton(t12 -> {
+            }).addNoButton(t13 -> exitWithoutSaving = true).addCancelButton(t12 -> {
                 //No need to do anything
             }).build();
             d.showAndWait();
-            while (block) {
-                try {
-                    Thread.sleep(5);
-                } catch (InterruptedException ex) {
-                    //Meh.
-                }
+            if (exitWithoutSaving) {
+                doExit(mainWindow);
             }
-            if (cancel) {
-                return; //Don't exit
-            }
+            return;
         }
+        doExit(mainWindow);
+    }
+
+    /**
+     * Clean up and exit. Whatever happens during clean-up, the process is
+     * always terminated - otherwise an error here would leave an invisible
+     * Quelea process running (still holding the database lock), which then
+     * stops Quelea from starting again until it's killed in Task Manager.
+     */
+    private void doExit(MainWindow mainWindow) {
+        try {
+            if (cleanUp(mainWindow)) {
+                return; // waiting for a recording to finish saving; that path exits itself
+            }
+        } catch (Throwable ex) {
+            LOGGER.log(Level.SEVERE, "Error while cleaning up on exit", ex);
+        }
+        System.exit(0);
+    }
+
+    /**
+     * @return true if exit has been deferred until a recording is saved.
+     */
+    private boolean cleanUp(MainWindow mainWindow) {
         LOGGER.log(Level.INFO, "Saving window position...");
         QueleaProperties.get().setSceneInfo(new SceneInfo(mainWindow.getX(), mainWindow.getY(), mainWindow.getWidth(), mainWindow.getHeight(), mainWindow.isMaximized()));
         QueleaProperties.get().setMainDivPos(mainWindow.getMainPanel().getMainDivPos());
@@ -111,7 +132,11 @@ public class ExitActionHandler implements EventHandler<ActionEvent> {
         for (IndexedDisplayable d : mainWindow.getMainPanel().getSchedulePanel().getScheduleList().itemsProperty().get()) {
             if (d != null) {
                 LOGGER.log(Level.INFO, "Cleaning up {0}", d.getClass());
-                d.displayable().dispose();
+                try {
+                    d.displayable().dispose();
+                } catch (Throwable ex) {
+                    LOGGER.log(Level.WARNING, "Couldn't clean up " + d.getClass(), ex);
+                }
             }
         }
 
@@ -132,8 +157,8 @@ public class ExitActionHandler implements EventHandler<ActionEvent> {
 
         LOGGER.log(Level.INFO, "Checking if Quelea currently is recording audio");
         MainToolbar toolbar = mainWindow.getMainToolbar();
-        RecordingsHandler recHandler = toolbar.getRecordButtonHandler().getRecordingsHandler();
-        if (toolbar.getRecordButtonHandler() != null && recHandler != null) {
+        RecordingsHandler recHandler = toolbar.getRecordButtonHandler() == null ? null : toolbar.getRecordButtonHandler().getRecordingsHandler();
+        if (recHandler != null) {
             if (recHandler.getIsRecording()) {
                 block = true;
                 Dialog d = Dialog.buildConfirmation(LabelGrabber.INSTANCE.getLabel("save.recording.before.exit.title"), LabelGrabber.INSTANCE.getLabel("save.recording.before.exit.message"))
@@ -163,9 +188,9 @@ public class ExitActionHandler implements EventHandler<ActionEvent> {
                 thread.setDaemon(true);
                 thread.start();
                 d.showAndWait();
-                return; //Don't exit until the recording is saved and converted
+                return true; //Don't exit until the recording is saved and converted
             }
         }
-        System.exit(0);
+        return false;
     }
 }

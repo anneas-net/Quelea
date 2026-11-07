@@ -69,6 +69,7 @@ public class QueleaPropertyKeys {
     public static final String lyricsTextBackgroundColor = "lyrics.text.background.color";
     public static final String stageLyricsColorKey = "stage.lyrics.color";
     public static final String stageBackgroundColorKey = "stage.background.color";
+    public static final String projectorBackgroundColorKey = "projector.background.color";
     public static final String activeSelectionColorKey = "active.selection.color";
     public static final String inactiveSelectionColorKey = "inactive.selection.color";
     public static final String outlineThicknessKey = "outline.thickness";

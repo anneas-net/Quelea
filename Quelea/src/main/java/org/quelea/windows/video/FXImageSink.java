@@ -279,12 +279,16 @@ public class FXImageSink {
             activeBuffer.unmap();
             activeBuffer = null;
         }
+        // The renderer may still be reading the native memory behind the
+        // previous image for a frame or two, so park the current sample with
+        // the other recent ones instead of freeing it immediately (freeing it
+        // early can crash the JVM with an access violation).
         if (activeSample != null) {
-            activeSample.dispose();
+            while (oldSamples.size() >= OLD_SAMPLE_BUFFER_SIZE) {
+                oldSamples.remove().dispose();
+            }
+            oldSamples.add(activeSample);
             activeSample = null;
-        }
-        while (!oldSamples.isEmpty()) {
-            oldSamples.remove().dispose();
         }
     }
 }

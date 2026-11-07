@@ -123,6 +123,10 @@ public class TimerControls extends StackPane {
         button.setTranslateY(0);
     }
 
+    public void removeTimer(Timer timer) {
+        timers.remove(timer);
+    }
+
     public void addTimer(Timer timer) {
         timers.add(timer);
     }

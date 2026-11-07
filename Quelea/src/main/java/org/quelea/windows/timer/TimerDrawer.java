@@ -34,6 +34,8 @@ public class TimerDrawer extends DisplayableDrawer {
     private DisplayCanvas stageCanvas;
     private StackPane stack;
     private VidDisplay vidDisplay;
+    // The timer last drawn on each canvas (one drawer serves several canvases)
+    private final java.util.Map<DisplayCanvas, Timer> drawnTimers = new java.util.WeakHashMap<>();
 
     public TimerDrawer(TimerControls controlPanel) {
         this.controlPanel = controlPanel;
@@ -55,9 +57,11 @@ public class TimerDrawer extends DisplayableDrawer {
 
         if (getCanvas().isStageView()) {
             stageCanvas = getCanvas();
+            retire(drawnTimers.remove(stageCanvas));
             stageTimer = new Timer(seconds, td.getPretext(), td.getPosttext());
             stageTimer.setTheme(td.getTheme());
             controlPanel.addTimer(stageTimer);
+            drawnTimers.put(stageCanvas, stageTimer);
             stageTimer.setFill(QueleaProperties.get().getStageLyricsColor());
             stageTimer.setEffect(null);
             ImageView imageView = stageCanvas.getNewImageView();
@@ -68,9 +72,11 @@ public class TimerDrawer extends DisplayableDrawer {
             stageTimer.toFront();
         } else {
             mainCanvas = getCanvas();
+            retire(drawnTimers.remove(mainCanvas));
             timer = new Timer(seconds, td.getPretext(), td.getPosttext());
             timer.setTheme(td.getTheme());
             controlPanel.addTimer(timer);
+            drawnTimers.put(mainCanvas, timer);
             stack = new StackPane();
             StackPane.setAlignment(timer, timer.getTextPosition());
 
@@ -88,10 +94,12 @@ public class TimerDrawer extends DisplayableDrawer {
                 vidDisplay.play();
                 mainCanvas.getChildren().add(0, imageView);
             } else if (td.getTheme().getBackground() instanceof ImageBackground) {
+                vidDisplay.setURI(null);
                 ImageView imageView = mainCanvas.getNewImageView();
                 imageView.setImage(((ImageBackground) td.getTheme().getBackground()).getImage());
                 mainCanvas.getChildren().add(0, imageView);
             } else if (td.getTheme().getBackground() instanceof ColourBackground) {
+                vidDisplay.setURI(null);
                 ImageView imageView = mainCanvas.getNewImageView();
                 imageView.setImage(Utils.getImageFromColour(((ColourBackground) td.getTheme().getBackground()).getColour()));
                 mainCanvas.getChildren().add(0, imageView);
@@ -102,6 +110,19 @@ public class TimerDrawer extends DisplayableDrawer {
             mainCanvas.getChildren().add(stack);
             timer.setFontSize(pickFontSize(td.getTheme().getFont(), timer, mainCanvas));
             timer.toFront();
+        }
+    }
+
+    /**
+     * Stop a timer that is being replaced. Each timer runs a never-ending
+     * one-second animation, so without this every redraw of a countdown left
+     * another invisible timer ticking (and being played/paused) for the rest
+     * of the session.
+     */
+    private void retire(Timer old) {
+        if (old != null) {
+            old.stop();
+            controlPanel.removeTimer(old);
         }
     }
 

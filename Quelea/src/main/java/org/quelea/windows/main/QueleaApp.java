@@ -18,6 +18,11 @@
 package org.quelea.windows.main;
 
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.application.Platform;
+import org.quelea.data.displayable.SongDisplayable;
+import org.quelea.services.utils.LoggerUtils;
 import java.util.ArrayList;
 import java.util.List;
 import org.javafx.dialog.Dialog;
@@ -35,6 +40,8 @@ import org.quelea.services.languages.LabelGrabber;
 public class QueleaApp {
 
     private static final QueleaApp INSTANCE = new QueleaApp();
+    private static final Logger LOGGER = LoggerUtils.getLogger();
+    private int scheduleLoadCounter = 0;
     private MainWindow mainWindow;
     private DisplayStage projectionWindow;
     private DisplayStage stageWindow;
@@ -74,12 +81,57 @@ public class QueleaApp {
      * @param file the file to open.
      */
     public void openSchedule(File file) {
-        Schedule schedule = Schedule.fromFile(file);
-        if (schedule == null) {
-            Dialog.showError(LabelGrabber.INSTANCE.getLabel("error.schedule.title"), LabelGrabber.INSTANCE.getLabel("error.schedule.message"));
-        } else {
-            QueleaApp.get().getMainWindow().getMainPanel().getSchedulePanel().getScheduleList().setSchedule(schedule);
-        }
+        openSchedule(file, null);
+    }
+
+    /**
+     * Open a given schedule file in Quelea. Reading the schedule can take a
+     * long time (every PDF page and PowerPoint slide in it is rendered to an
+     * image, and songs are matched against the database), so it's done on a
+     * background thread to keep the window responsive. Previously this all ran
+     * on the UI thread and Windows would report Quelea as "Not responding"
+     * while a schedule with PDFs was opening.
+     *
+     * @param file     the file to open.
+     * @param onLoaded run on the FX thread once the schedule has been shown,
+     *                 may be null.
+     */
+    public void openSchedule(File file, Runnable onLoaded) {
+        final int loadId = ++scheduleLoadCounter;
+        final StatusPanel panel = getStatusGroup().addPanel(LabelGrabber.INSTANCE.getLabel("opening.schedule.status"));
+        Thread loader = new Thread(() -> {
+            Schedule schedule = null;
+            try {
+                schedule = Schedule.fromFile(file);
+                if (schedule != null) {
+                    for (int i = 0; i < schedule.getSize(); i++) {
+                        if (schedule.getDisplayable(i) instanceof SongDisplayable song) {
+                            song.matchID();
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                LOGGER.log(Level.WARNING, "Couldn't open schedule " + file, t);
+                schedule = null;
+            }
+            final Schedule loaded = schedule;
+            Platform.runLater(() -> {
+                panel.done();
+                if (loadId != scheduleLoadCounter) {
+                    return; // a newer schedule was opened meanwhile - that one wins
+                }
+                if (loaded == null) {
+                    Dialog.showError(LabelGrabber.INSTANCE.getLabel("error.schedule.title"), LabelGrabber.INSTANCE.getLabel("error.schedule.message"));
+                } else {
+                    QueleaApp.get().getMainWindow().getMainPanel().getSchedulePanel().getScheduleList().setSchedule(loaded, false);
+                }
+                if (onLoaded != null) {
+                    onLoaded.run();
+                }
+            });
+        }, "schedule-loader");
+        loader.setDaemon(true);
+        loader.start();
     }
 
     /**

@@ -24,6 +24,8 @@ import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import org.quelea.services.utils.QueleaProperties;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.quelea.services.languages.LabelGrabber;
@@ -47,6 +49,8 @@ public class DisplayStage extends Stage {
     private static final Cursor BLANK_CURSOR;
     private final DisplayCanvas canvas;
     private final TestImage testImage;
+    private final StackPane scenePane;
+    private final boolean stageView;
 
     /**
      * Initialise cursor hiding.
@@ -68,7 +72,6 @@ public class DisplayStage extends Stage {
         setTitle(LabelGrabber.INSTANCE.getLabel("projection.window.title"));
         setAreaImmediate(area);
         StackPane scenePane = new StackPane();
-        scenePane.setStyle("-fx-background-color: transparent;");
         canvas = new DisplayCanvas(stageView, null, stageView ? Priority.HIGH : Priority.MID);
         canvas.setCursor(BLANK_CURSOR);
         scenePane.getChildren().add(canvas);
@@ -99,6 +102,29 @@ public class DisplayStage extends Stage {
             scene.setFill(null);
         }
         setScene(scene);
+        this.scenePane = scenePane;
+        this.stageView = stageView;
+        updateBackgroundColour();
+    }
+
+    /**
+     * Paint the area behind the projected content with the configured
+     * projector background colour. Without this the window is transparent,
+     * so anything that doesn't fill the whole screen (e.g. an image or PDF
+     * page with a different aspect ratio) lets the computer desktop show
+     * through around it.
+     */
+    public final void updateBackgroundColour() {
+        if (stageView) {
+            scenePane.setStyle("-fx-background-color: transparent;");
+            return;
+        }
+        Color colour = QueleaProperties.get().getProjectorBackgroundColor();
+        // Set via CSS (an inline style would otherwise override setBackground)
+        scenePane.setStyle(String.format("-fx-background-color: rgb(%d,%d,%d);",
+                (int) Math.round(colour.getRed() * 255),
+                (int) Math.round(colour.getGreen() * 255),
+                (int) Math.round(colour.getBlue() * 255)));
     }
 
     /**

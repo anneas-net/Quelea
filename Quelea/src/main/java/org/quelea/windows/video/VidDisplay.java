@@ -3,6 +3,7 @@ package org.quelea.windows.video;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.scene.image.Image;
@@ -84,15 +85,19 @@ public class VidDisplay {
                 playBin.setFlags(flags);
             }
             playBin.getBus().connect((Bus.EOS) source -> {
-                PlayBin pb = playBin;
-                if (pb == null) {
-                    return;
-                }
-                if (loop) {
-                    pb.seekSimple(Format.TIME, EnumSet.of(SeekFlags.FLUSH), 0);
-                } else {
-                    onFinished.run();
-                }
+                // Bus callbacks arrive on a GStreamer thread; onFinished updates
+                // the multimedia controls, so run it on the FX thread.
+                Platform.runLater(() -> {
+                    PlayBin pb = playBin;
+                    if (pb == null) {
+                        return;
+                    }
+                    if (loop) {
+                        pb.seekSimple(Format.TIME, EnumSet.of(SeekFlags.FLUSH), 0);
+                    } else {
+                        onFinished.run();
+                    }
+                });
             });
             // Only runs while playing (see play()/stop()). A permanently running
             // timeline would be referenced by the JavaFX toolkit forever, keeping

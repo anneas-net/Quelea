@@ -193,7 +193,13 @@ public class BiblePassage implements TextDisplayable, Serializable {
         }
 
         if (verseError) {
-            Dialog.showInfo(LabelGrabber.INSTANCE.getLabel("no.verse.title"), LabelGrabber.INSTANCE.getLabel("no.verse.message"), QueleaApp.get().getMainWindow());
+            Runnable showError = () -> Dialog.showInfo(LabelGrabber.INSTANCE.getLabel("no.verse.title"), LabelGrabber.INSTANCE.getLabel("no.verse.message"), QueleaApp.get().getMainWindow());
+            if (javafx.application.Platform.isFxApplicationThread()) {
+                showError.run();
+            } else {
+                // Passages can now be created while a schedule loads in the background
+                javafx.application.Platform.runLater(showError);
+            }
         }
     }
 
