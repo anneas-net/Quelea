@@ -24,6 +24,7 @@ import org.javafx.dialog.Dialog;
 import org.quelea.services.languages.LabelGrabber;
 import org.quelea.services.utils.FileFilters;
 import org.quelea.services.utils.Utils;
+import org.quelea.services.utils.LoggerUtils;
 import org.quelea.services.utils.QueleaProperties;
 import org.quelea.windows.main.MainPanel;
 import org.quelea.windows.main.QueleaApp;
@@ -77,17 +78,24 @@ public class ScheduleSaver {
         final StatusPanel statusPanel = QueleaApp.get().getStatusGroup().addPanel(LabelGrabber.INSTANCE.getLabel("saving.schedule"));
         new Thread(() -> {
             boolean success = false;
-            if (schedule.getFile() != null) {
-                success = schedule.writeToFile();
-                if (!success) {
+            try {
+                if (schedule.getFile() != null) {
+                    success = schedule.writeToFile();
+                }
+            } catch (Throwable ex) {
+                LoggerUtils.getLogger().log(java.util.logging.Level.WARNING, "Error saving schedule", ex);
+                success = false;
+            } finally {
+                if (!success && schedule.getFile() != null) {
                     Platform.runLater(() -> Dialog.showError(LabelGrabber.INSTANCE.getLabel("cant.save.schedule.title"), LabelGrabber.INSTANCE.getLabel("cant.save.schedule.text")));
                 }
+                // Always report back, so nothing waiting on the save is left hanging
+                if (callback != null) {
+                    callback.saved(success);
+                }
+                statusPanel.done();
             }
-            if (callback != null) {
-                callback.saved(success);
-            }
-            statusPanel.done();
-        }).start();
+        }, "schedule-saver").start();
     }
 
 }

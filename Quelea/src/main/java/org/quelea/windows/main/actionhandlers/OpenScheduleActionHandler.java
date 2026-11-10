@@ -41,8 +41,8 @@ public class OpenScheduleActionHandler extends ClearingEventHandler {
             File file = chooser.showOpenDialog(QueleaApp.get().getMainWindow());
             if(file!=null) {
                 QueleaProperties.get().setLastScheduleFileDirectory(file.getParentFile());
-                QueleaApp.get().openSchedule(file);
-                QueleaApp.get().getMainWindow().getMainPanel().getSchedulePanel().getThemeNode().refresh();
+                QueleaApp.get().openSchedule(file,
+                        () -> QueleaApp.get().getMainWindow().getMainPanel().getSchedulePanel().getThemeNode().refresh());
             }
         }
     }

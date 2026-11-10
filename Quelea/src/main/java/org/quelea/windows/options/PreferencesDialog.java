@@ -117,6 +117,9 @@ public class PreferencesDialog extends Stage {
                 updatePos();
             }
             displayPanel.setDisplayChange(false);
+            if (QueleaApp.get().getProjectionWindow() != null) {
+                QueleaApp.get().getProjectionWindow().updateBackgroundColour();
+            }
             QueleaApp.get().getMainWindow().getMainPanel().getSchedulePanel().getThemeNode().refresh();
 
             // If the option has changed for linking the preview and live dividers, update the current UI to respect

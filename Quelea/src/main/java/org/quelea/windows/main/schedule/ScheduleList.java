@@ -557,10 +557,23 @@ public class ScheduleList extends StackPane {
      * @param schedule the schedule.
      */
     public void setSchedule(Schedule schedule) {
+        setSchedule(schedule, true);
+    }
+
+    /**
+     * Erase everything in the current schedule and set the contents of this
+     * list to the given schedule.
+     *
+     * @param schedule the schedule.
+     * @param matchIds true to match songs against the song database here;
+     *                 false if that was already done (e.g. on a background
+     *                 thread while the schedule was loading).
+     */
+    public void setSchedule(Schedule schedule, boolean matchIds) {
         clearSchedule();
         for (int i = 0; i < schedule.getSize(); i++) {
             Displayable displayable = schedule.getDisplayable(i);
-            if (displayable instanceof SongDisplayable) {
+            if (matchIds && displayable instanceof SongDisplayable) {
                 ((SongDisplayable) displayable).matchID();
             }
             listView.itemsProperty().get().add(new IndexedDisplayable(displayable, i));
